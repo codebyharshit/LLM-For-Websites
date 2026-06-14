@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import {
   seed,
@@ -9,6 +10,7 @@ import {
   sources,
   documents,
   chunks as chunksTable,
+  messages as messagesTable,
 } from "@supportrag/db";
 import { FakeLLMRouter, hashEmbed } from "@supportrag/core";
 import { buildApp } from "../app.js";
@@ -88,6 +90,7 @@ describe("POST /v1/chat (full pipeline, FakeLLMRouter)", () => {
     const events = parseSSE(res.payload);
     expect(events.some((e) => e.event === "token")).toBe(true);
     const done = events.find((e) => e.event === "done")!.data as {
+      message_id: string;
       escalate: boolean;
       model_used: string;
       sources: unknown[];
@@ -97,6 +100,19 @@ describe("POST /v1/chat (full pipeline, FakeLLMRouter)", () => {
     expect(done.sources.length).toBeGreaterThan(0);
     // Prompt injection embedded in a retrieved chunk must not alter behavior.
     expect(res.payload).not.toContain("HACKED");
+
+    // The full messages row is logged (the eval dataset).
+    const [row] = await getAdminDb()
+      .select()
+      .from(messagesTable)
+      .where(eq(messagesTable.id, done.message_id));
+    expect(row?.role).toBe("assistant");
+    expect(row?.rewrittenQuery).toBeTruthy();
+    expect(row?.retrievedChunkIds?.length).toBeGreaterThan(0);
+    expect(row?.rerankTopScore).not.toBeNull();
+    expect(row?.modelUsed).toBe("fake");
+    expect(row?.tokensOut).not.toBeNull();
+    expect(row?.latencyMs).not.toBeNull();
   });
 
   it("refuses and escalates an out-of-domain question (gate, no generation)", async () => {

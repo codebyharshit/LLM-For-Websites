@@ -21,6 +21,20 @@ export interface ChatRouteDeps {
   rateLimit?: { limit: number; windowSec: number };
 }
 
+function emptyDone(message: string): AnswerDone {
+  return {
+    answer: "",
+    sources: [],
+    escalate: true,
+    modelUsed: "none",
+    rewrittenQuery: message,
+    retrievedChunkIds: [],
+    rerankTopScore: 0,
+    tokensIn: 0,
+    tokensOut: 0,
+  };
+}
+
 export async function upsertConversation(
   tenantId: string,
   botId: string,
@@ -74,10 +88,42 @@ async function loadBotContext(
   });
 }
 
+/** Persist the user + assistant turn (§A.2 eval fields); returns the assistant message id. */
+async function persistTurn(
+  tenantId: string,
+  conversationId: string,
+  userText: string,
+  done: AnswerDone,
+  latencyMs: number,
+): Promise<string> {
+  return withTenant(tenantId, async (db) => {
+    await db
+      .insert(messages)
+      .values({ tenantId, conversationId, role: "user", content: userText });
+    const [asst] = await db
+      .insert(messages)
+      .values({
+        tenantId,
+        conversationId,
+        role: "assistant",
+        content: done.answer,
+        rewrittenQuery: done.rewrittenQuery,
+        retrievedChunkIds: done.retrievedChunkIds,
+        rerankTopScore: done.rerankTopScore,
+        modelUsed: done.modelUsed,
+        tokensIn: done.tokensIn,
+        tokensOut: done.tokensOut,
+        latencyMs,
+      })
+      .returning({ id: messages.id });
+    return asst!.id;
+  });
+}
+
 /**
  * §A.4 — public widget chat. Runs the full RAG pipeline (rewrite → retrieve → rerank+gate →
- * generate) and streams it over SSE. Below the confidence gate it streams the refusal and
- * escalates without generating. Persisting the messages row lands in T2.8.
+ * generate), streams it over SSE, and logs the full messages row per turn. Below the
+ * confidence gate it streams the refusal and escalates without generating.
  */
 export async function chatRoutes(app: FastifyInstance, deps: ChatRouteDeps): Promise<void> {
   const limit = deps.rateLimit?.limit ?? 30;
@@ -100,6 +146,7 @@ export async function chatRoutes(app: FastifyInstance, deps: ChatRouteDeps): Pro
     const conversationId = await upsertConversation(bot.tenantId, bot.id, body.session_id);
     const ctx = await loadBotContext(bot.tenantId, bot.id, conversationId);
 
+    const startedAt = Date.now();
     reply.hijack();
     const sse = new SSEStream(reply);
     let done: AnswerDone | undefined;
@@ -119,18 +166,35 @@ export async function chatRoutes(app: FastifyInstance, deps: ChatRouteDeps): Pro
         if (ev.type === "token") sse.send("token", { delta: ev.delta });
         else done = ev.payload;
       }
+      const final = done ?? emptyDone(body.message);
+      const messageId = await persistTurn(
+        bot.tenantId,
+        conversationId,
+        body.message,
+        final,
+        Date.now() - startedAt,
+      );
       sse.send("done", {
-        message_id: randomUUID(),
+        message_id: messageId,
         conversation_id: conversationId,
-        sources: done?.sources ?? [],
-        escalate: done?.escalate ?? false,
-        model_used: done?.modelUsed ?? "none",
+        sources: final.sources,
+        escalate: final.escalate,
+        model_used: final.modelUsed,
       });
     } catch (err) {
       logger.error({ err, botId: bot.id }, "chat generation failed");
+      // All models down / pipeline error → log the turn, escalate, lead-capture fallback.
+      const fallback = emptyDone(body.message);
+      const messageId = await persistTurn(
+        bot.tenantId,
+        conversationId,
+        body.message,
+        fallback,
+        Date.now() - startedAt,
+      ).catch(() => randomUUID());
       sse.send("error", { code: "generation_failed" });
       sse.send("done", {
-        message_id: randomUUID(),
+        message_id: messageId,
         conversation_id: conversationId,
         sources: [],
         escalate: true,
