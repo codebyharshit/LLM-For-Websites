@@ -46,3 +46,11 @@ export {
   type CrawlDeps,
   type CrawlOptions,
 } from "./ingest/crawl.js";
+export {
+  parseFile,
+  parseText,
+  detectKind,
+  type ParsedDoc,
+  type ParsedKind,
+} from "./ingest/parse.js";
+export { htmlToMarkdown } from "./ingest/html.js";
