@@ -63,7 +63,7 @@ export class DefaultLLMRouter implements LLMRouter {
     throw new NotImplementedError("rerank");
   }
 
-  // eslint-disable-next-line require-yield -- stub: throws until wired in T2.6
+  // Stub generator: throws until wired in T2.6.
   async *generate(): AsyncIterable<GenerateDelta> {
     throw new NotImplementedError("generate");
   }
