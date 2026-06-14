@@ -71,6 +71,13 @@ export {
   type IngestDocResult,
 } from "./ingest/orchestrate.js";
 export { rateLimit, type RateLimitResult } from "./ratelimit.js";
+export {
+  buildPrompt,
+  type BuildPromptInput,
+  type BuiltPrompt,
+  type PromptBot,
+  type PromptChunk,
+} from "./prompt/build.js";
 export { rewriteQuery, type RewriteDeps } from "./query/rewrite.js";
 export {
   retrieve,
