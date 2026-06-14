@@ -19,7 +19,9 @@
   },
   "dependencies": {
     "@supportrag/shared": "workspace:*",
+    "@supportrag/db": "workspace:*",
     "@anthropic-ai/sdk": "^0.32.1",
+    "drizzle-orm": "^0.38.3",
     "@google/generative-ai": "^0.21.0",
     "bullmq": "^5.34.5",
     "cohere-ai": "^7.15.0",

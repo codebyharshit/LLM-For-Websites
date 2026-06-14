@@ -61,3 +61,8 @@ export {
   type Chunk,
   type ChunkOptions,
 } from "./ingest/chunk.js";
+export {
+  ingestDocument,
+  type IngestDocInput,
+  type IngestDocResult,
+} from "./ingest/orchestrate.js";

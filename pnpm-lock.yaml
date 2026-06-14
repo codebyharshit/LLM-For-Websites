@@ -98,6 +98,9 @@ importers:
       '@google/generative-ai':
         specifier: ^0.21.0
         version: 0.21.0
+      '@supportrag/db':
+        specifier: workspace:*
+        version: link:../db
       '@supportrag/shared':
         specifier: workspace:*
         version: link:../shared
@@ -107,6 +110,9 @@ importers:
       cohere-ai:
         specifier: ^7.15.0
         version: 7.21.0
+      drizzle-orm:
+        specifier: ^0.38.3
+        version: 0.38.4(@types/pg@8.20.0)(pg@8.21.0)
       fast-xml-parser:
         specifier: ^4.5.1
         version: 4.5.6
