@@ -102,3 +102,9 @@ export {
   type AnswerInput,
   type AnswerDeps,
 } from "./query/answer.js";
+export {
+  extractCitations,
+  mapCitations,
+  detectLeak,
+  type SourceChunk,
+} from "./query/guard.js";

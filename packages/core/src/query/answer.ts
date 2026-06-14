@@ -1,9 +1,11 @@
 import type { ChatMsg, Source } from "@supportrag/shared";
+import { logger } from "@supportrag/shared";
 import type { LLMRouter } from "../llm/router.js";
 import { rewriteQuery } from "./rewrite.js";
 import { retrieve } from "./retrieve.js";
 import { rerankAndGate } from "./rerank.js";
 import { buildPrompt } from "../prompt/build.js";
+import { mapCitations, detectLeak } from "./guard.js";
 
 export interface AnswerDone {
   answer: string;
@@ -103,11 +105,14 @@ export async function* answerQuestion(
     }
   }
 
-  const sources: Source[] = chunks.map((c, i) => ({
-    n: i + 1,
-    url: c.url ?? "",
-    title: c.title ?? "",
-  }));
+  // Map [n] citations in the answer back to chunk sources; flag any prompt leak.
+  const sources: Source[] = mapCitations(
+    answer,
+    chunks.map((c) => ({ url: c.url, title: c.title })),
+  );
+  if (detectLeak(answer)) {
+    logger.warn({ botId: input.botId }, "possible system-prompt leak in answer");
+  }
 
   yield {
     type: "done",
