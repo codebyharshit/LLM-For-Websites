@@ -5,6 +5,7 @@ export {
   type GenerateDelta,
   type GenerateDone,
   type GenerateOptions,
+  type GenerateClient,
   type LLMRouterDeps,
   DefaultLLMRouter,
   createLLMRouter,
@@ -19,8 +20,9 @@ export {
   COHERE_RERANK_MODEL,
   type RerankClient,
 } from "./llm/providers/cohere.js";
-export { generateGemini } from "./llm/providers/gemini.js";
-export { generateAnthropic } from "./llm/providers/anthropic.js";
+export { makeGeminiClient, GEMINI_MODEL } from "./llm/providers/gemini.js";
+export { makeAnthropicClient, ANTHROPIC_MODEL } from "./llm/providers/anthropic.js";
+export { makeDeepSeekClient, DEEPSEEK_MODEL } from "./llm/providers/deepseek.js";
 export { FakeLLMRouter, hashEmbed, overlapScore } from "./llm/fake.js";
 export { NotImplementedError, MissingApiKeyError } from "./llm/errors.js";
 export {
@@ -92,3 +94,11 @@ export {
   type RerankDeps,
   type RerankOptions,
 } from "./query/rerank.js";
+export {
+  answerQuestion,
+  REFUSAL_MESSAGE,
+  type AnswerEvent,
+  type AnswerDone,
+  type AnswerInput,
+  type AnswerDeps,
+} from "./query/answer.js";

@@ -13,6 +13,7 @@ const EnvSchema = z.object({
   COHERE_API_KEY: z.string().default(""), // rerank
   GEMINI_API_KEY: z.string().default(""), // primary generation
   ANTHROPIC_API_KEY: z.string().default(""), // fallback generation
+  DEEPSEEK_API_KEY: z.string().default(""), // final fallback generation
   RESEND_API_KEY: z.string().default(""), // escalation email
   OBJECT_STORE_BUCKET: z.string().default(""), // raw uploaded files (S3-compatible)
   APP_BASE_URL: z.string().url().default("http://localhost:3000"),

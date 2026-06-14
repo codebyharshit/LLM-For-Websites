@@ -1,7 +1,12 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { ZodError } from "zod";
 import { AppError, getEnv, logger } from "@supportrag/shared";
-import { makeRedisConnection, createIngestQueue } from "@supportrag/core";
+import {
+  makeRedisConnection,
+  createIngestQueue,
+  createLLMRouter,
+  type LLMRouter,
+} from "@supportrag/core";
 import { authPlugin } from "./auth/plugin.js";
 import { authRoutes } from "./auth/routes.js";
 import { sourcesRoutes } from "./routes/sources.js";
@@ -9,6 +14,8 @@ import { chatRoutes } from "./routes/chat.js";
 
 export interface BuildAppOptions {
   chatRateLimit?: { limit: number; windowSec: number };
+  /** Inject a router (tests use FakeLLMRouter to run the pipeline without keys). */
+  router?: LLMRouter;
 }
 
 /** Build the Fastify app (no listen) so tests can use app.inject(). */
@@ -17,6 +24,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   const env = getEnv();
   const connection = makeRedisConnection(env.REDIS_URL);
   const queue = createIngestQueue(connection);
+  const router = opts.router ?? createLLMRouter(env);
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof AppError) {
@@ -38,6 +46,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await sourcesRoutes(app, { queue });
   await chatRoutes(app, {
     redis: connection,
+    router,
     ...(opts.chatRateLimit ? { rateLimit: opts.chatRateLimit } : {}),
   });
   app.get("/health", async () => ({ ok: true }));

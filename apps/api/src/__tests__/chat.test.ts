@@ -1,16 +1,69 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { seed, BUYCYCLE, closePool } from "@supportrag/db";
+import {
+  seed,
+  BUYCYCLE,
+  closePool,
+  getAdminDb,
+  sources,
+  documents,
+  chunks as chunksTable,
+} from "@supportrag/db";
+import { FakeLLMRouter, hashEmbed } from "@supportrag/core";
 import { buildApp } from "../app.js";
 
-describe("POST /v1/chat (SSE scaffold)", () => {
+const router = new FakeLLMRouter(1536);
+
+// Parse SSE payload into the list of (event, data) pairs.
+function parseSSE(payload: string): { event: string; data: unknown }[] {
+  return payload
+    .split("\n\n")
+    .filter((b) => b.includes("event:"))
+    .map((b) => {
+      const event = /event: (.*)/.exec(b)![1]!;
+      const data = JSON.parse(/data: (.*)/.exec(b)![1]!);
+      return { event, data };
+    });
+}
+
+describe("POST /v1/chat (full pipeline, FakeLLMRouter)", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
     await seed();
-    // Low rate limit so the test can trip it quickly.
-    app = await buildApp({ chatRateLimit: { limit: 2, windowSec: 60 } });
+    // Give the Buycycle bot some content so retrieval can clear the gate.
+    const db = getAdminDb();
+    const [s] = await db
+      .insert(sources)
+      .values({ tenantId: BUYCYCLE.tenantId, botId: BUYCYCLE.botId, type: "text", location: "seed" })
+      .returning();
+    const [doc] = await db
+      .insert(documents)
+      .values({
+        tenantId: BUYCYCLE.tenantId,
+        botId: BUYCYCLE.botId,
+        sourceId: s!.id,
+        url: "https://buycycle.test/returns",
+        title: "Returns",
+      })
+      .returning();
+    const contents = [
+      "Our bike return policy lets you return within 30 days for a full refund.",
+      "Refunds are processed within 5 business days of receiving the returned bike.",
+    ];
+    await db.insert(chunksTable).values(
+      contents.map((content, i) => ({
+        tenantId: BUYCYCLE.tenantId,
+        botId: BUYCYCLE.botId,
+        documentId: doc!.id,
+        content,
+        ordinal: i,
+        embedding: hashEmbed(content, 1536),
+      })),
+    );
+
+    app = await buildApp({ router, chatRateLimit: { limit: 50, windowSec: 60 } });
   });
 
   afterAll(async () => {
@@ -18,44 +71,64 @@ describe("POST /v1/chat (SSE scaffold)", () => {
     await closePool();
   });
 
-  it("streams token + done for a valid bot token", async () => {
-    const res = await app.inject({
+  function chat(message: string) {
+    return app.inject({
       method: "POST",
       url: "/v1/chat",
       headers: { authorization: `Bearer ${BUYCYCLE.publicToken}` },
-      payload: { session_id: randomUUID(), message: "hello" },
+      payload: { session_id: randomUUID(), message },
     });
+  }
+
+  it("streams a grounded answer with sources for an in-domain question", async () => {
+    const res = await chat("What is the bike return policy?");
     expect(res.statusCode).toBe(200);
-    expect(res.headers["content-type"]).toContain("text/event-stream");
-    expect(res.payload).toContain("event: token");
-    expect(res.payload).toContain("event: done");
-    expect(res.payload).toContain('"model_used":"scaffold"');
+    const events = parseSSE(res.payload);
+    expect(events.some((e) => e.event === "token")).toBe(true);
+    const done = events.find((e) => e.event === "done")!.data as {
+      escalate: boolean;
+      model_used: string;
+      sources: unknown[];
+    };
+    expect(done.escalate).toBe(false);
+    expect(done.model_used).toBe("fake");
+    expect(done.sources.length).toBeGreaterThan(0);
   });
 
-  it("rejects a missing/invalid bot token with 401", async () => {
+  it("refuses and escalates an out-of-domain question (gate, no generation)", async () => {
+    const res = await chat("What is the weather in Tokyo tomorrow?");
+    expect(res.statusCode).toBe(200);
+    const events = parseSSE(res.payload);
+    const done = events.find((e) => e.event === "done")!.data as {
+      escalate: boolean;
+      model_used: string;
+    };
+    expect(done.escalate).toBe(true);
+    expect(done.model_used).toBe("none");
+  });
+
+  it("rejects an invalid bot token with 401", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/v1/chat",
-      headers: { authorization: "Bearer not-a-real-token" },
-      payload: { session_id: randomUUID(), message: "hello" },
+      headers: { authorization: "Bearer nope" },
+      payload: { session_id: randomUUID(), message: "hi" },
     });
     expect(res.statusCode).toBe(401);
   });
 
-  it("trips the rate limit after N requests in a window", async () => {
-    const session = randomUUID(); // fresh bucket per run
+  it("trips the rate limit", async () => {
+    const session = randomUUID();
+    const app2 = await buildApp({ router, chatRateLimit: { limit: 1, windowSec: 60 } });
     const make = () =>
-      app.inject({
+      app2.inject({
         method: "POST",
         url: "/v1/chat",
         headers: { authorization: `Bearer ${BUYCYCLE.publicToken}` },
         payload: { session_id: session, message: "hi" },
       });
-    const first = await make();
-    const second = await make();
-    const third = await make();
-    expect(first.statusCode).toBe(200);
-    expect(second.statusCode).toBe(200);
-    expect(third.statusCode).toBe(429); // limit = 2
+    expect((await make()).statusCode).toBe(200);
+    expect((await make()).statusCode).toBe(429);
+    await app2.close();
   });
 });
