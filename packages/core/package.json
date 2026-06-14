@@ -18,6 +18,10 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@supportrag/shared": "workspace:*"
+    "@supportrag/shared": "workspace:*",
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@google/generative-ai": "^0.21.0",
+    "cohere-ai": "^7.15.0",
+    "openai": "^4.77.0"
   }
 }
