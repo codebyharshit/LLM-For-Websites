@@ -5,7 +5,7 @@ import { rewriteQuery } from "./rewrite.js";
 import { retrieve } from "./retrieve.js";
 import { rerankAndGate } from "./rerank.js";
 import { buildPrompt } from "../prompt/build.js";
-import { mapCitations, detectLeak } from "./guard.js";
+import { mapCitations, detectLeak, matchesAnyGuard } from "./guard.js";
 
 export interface AnswerDone {
   answer: string;
@@ -28,6 +28,10 @@ export interface AnswerInput {
   botId: string;
   bot: { name: string; persona?: string | null };
   policies: string[];
+  /** guard_block rule contents — matching topics are refused deterministically. */
+  guardBlock?: string[];
+  /** guard_escalate rule contents — matching topics escalate to a human. */
+  guardEscalate?: string[];
   history: ChatMsg[];
   message: string;
   tau: number;
@@ -41,6 +45,15 @@ export const REFUSAL_MESSAGE =
   "I'm sorry, I don't have enough information to answer that confidently. " +
   "I can connect you with a human who can help.";
 
+export const BLOCK_MESSAGE = "I'm not able to help with that topic.";
+
+export const ESCALATE_MESSAGE =
+  "That's something a human should help with — let me connect you with our team.";
+
+function streamWords(text: string): { type: "token"; delta: string }[] {
+  return text.split(" ").map((w) => ({ type: "token", delta: w + " " }));
+}
+
 /**
  * The full query pipeline as a stream of events: rewrite → retrieve → rerank+gate →
  * (refusal | prompt+generate). Below the confidence gate it streams the templated refusal
@@ -51,6 +64,45 @@ export async function* answerQuestion(
   deps: AnswerDeps,
 ): AsyncIterable<AnswerEvent> {
   const router = deps.router;
+
+  // Deterministic guard rules run first, before any retrieval or generation.
+  if (matchesAnyGuard(input.message, input.guardBlock ?? [])) {
+    for (const ev of streamWords(BLOCK_MESSAGE)) yield ev;
+    yield {
+      type: "done",
+      payload: {
+        answer: BLOCK_MESSAGE,
+        sources: [],
+        escalate: false,
+        modelUsed: "blocked",
+        rewrittenQuery: input.message,
+        retrievedChunkIds: [],
+        rerankTopScore: 0,
+        tokensIn: 0,
+        tokensOut: 0,
+      },
+    };
+    return;
+  }
+  if (matchesAnyGuard(input.message, input.guardEscalate ?? [])) {
+    for (const ev of streamWords(ESCALATE_MESSAGE)) yield ev;
+    yield {
+      type: "done",
+      payload: {
+        answer: ESCALATE_MESSAGE,
+        sources: [],
+        escalate: true,
+        modelUsed: "none",
+        rewrittenQuery: input.message,
+        retrievedChunkIds: [],
+        rerankTopScore: 0,
+        tokensIn: 0,
+        tokensOut: 0,
+      },
+    };
+    return;
+  }
+
   const rewritten = await rewriteQuery(input.message, input.history, { router });
   const candidates = await retrieve(rewritten, input.botId, input.tenantId, { router });
   const gate = await rerankAndGate(rewritten, candidates, { router }, { tau: input.tau, topN: 5 });

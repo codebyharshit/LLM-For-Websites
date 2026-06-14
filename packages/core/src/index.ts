@@ -97,6 +97,8 @@ export {
 export {
   answerQuestion,
   REFUSAL_MESSAGE,
+  BLOCK_MESSAGE,
+  ESCALATE_MESSAGE,
   type AnswerEvent,
   type AnswerDone,
   type AnswerInput,
@@ -106,5 +108,6 @@ export {
   extractCitations,
   mapCitations,
   detectLeak,
+  matchesAnyGuard,
   type SourceChunk,
 } from "./query/guard.js";

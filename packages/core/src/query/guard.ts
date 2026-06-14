@@ -45,3 +45,21 @@ const LEAK_MARKERS = [
 export function detectLeak(answer: string): boolean {
   return LEAK_MARKERS.some((m) => answer.includes(m));
 }
+
+/**
+ * Deterministic guard matching: each rule's content is a comma/newline-separated list of
+ * trigger phrases; the guard fires if the message contains any trigger (case-insensitive).
+ * (LLM-based intent classification is a future enhancement — see docs/someday.md.)
+ */
+export function matchesAnyGuard(message: string, ruleContents: string[]): boolean {
+  const msg = message.toLowerCase();
+  for (const content of ruleContents) {
+    for (const trigger of content
+      .split(/[,\n]/)
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean)) {
+      if (msg.includes(trigger)) return true;
+    }
+  }
+  return false;
+}

@@ -57,6 +57,8 @@ interface BotContext {
   name: string;
   persona: string | null;
   policies: string[];
+  guardBlock: string[];
+  guardEscalate: string[];
   history: ChatMsg[];
 }
 
@@ -70,19 +72,23 @@ async function loadBotContext(
       .select({ name: bots.name, persona: bots.persona })
       .from(bots)
       .where(eq(bots.id, botId));
-    const policyRows = await db
-      .select({ content: rules.content })
+    const ruleRows = await db
+      .select({ kind: rules.kind, content: rules.content })
       .from(rules)
-      .where(and(eq(rules.botId, botId), eq(rules.kind, "policy"), eq(rules.enabled, true)));
+      .where(and(eq(rules.botId, botId), eq(rules.enabled, true)));
     const historyRows = await db
       .select({ role: messages.role, content: messages.content })
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(asc(messages.createdAt));
+    const byKind = (k: string): string[] =>
+      ruleRows.filter((r) => r.kind === k).map((r) => r.content);
     return {
       name: bot?.name ?? "Assistant",
       persona: bot?.persona ?? null,
-      policies: policyRows.map((r) => r.content),
+      policies: byKind("policy"),
+      guardBlock: byKind("guard_block"),
+      guardEscalate: byKind("guard_escalate"),
       history: historyRows.slice(-12).map((m) => ({ role: m.role, content: m.content })),
     };
   });
@@ -157,6 +163,8 @@ export async function chatRoutes(app: FastifyInstance, deps: ChatRouteDeps): Pro
           botId: bot.id,
           bot: { name: ctx.name, persona: ctx.persona },
           policies: ctx.policies,
+          guardBlock: ctx.guardBlock,
+          guardEscalate: ctx.guardEscalate,
           history: ctx.history,
           message: body.message,
           tau,
