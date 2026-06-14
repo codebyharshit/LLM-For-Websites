@@ -11,6 +11,7 @@ import { authPlugin } from "./auth/plugin.js";
 import { authRoutes } from "./auth/routes.js";
 import { sourcesRoutes } from "./routes/sources.js";
 import { chatRoutes } from "./routes/chat.js";
+import { widgetRoutes } from "./routes/widget.js";
 
 export interface BuildAppOptions {
   chatRateLimit?: { limit: number; windowSec: number };
@@ -49,6 +50,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     router,
     ...(opts.chatRateLimit ? { rateLimit: opts.chatRateLimit } : {}),
   });
+  await widgetRoutes(app);
   app.get("/health", async () => ({ ok: true }));
 
   app.addHook("onClose", async () => {
