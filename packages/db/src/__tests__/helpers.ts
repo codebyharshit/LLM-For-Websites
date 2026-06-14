@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getAdminDb } from "../client.js";
 import {
   tenants,
+  users,
   bots,
   sources,
   documents,
@@ -12,6 +13,7 @@ import {
 
 export interface SeededTenant {
   tenantId: string;
+  userId: string;
   botId: string;
   sourceId: string;
   documentId: string;
@@ -33,6 +35,12 @@ function one<T>(rows: T[]): T {
 export async function seedTenant(label: string): Promise<SeededTenant> {
   const db = getAdminDb();
   const t = one(await db.insert(tenants).values({ name: `${label}-${randomUUID()}` }).returning());
+  const u = one(
+    await db
+      .insert(users)
+      .values({ tenantId: t.id, email: `${label}-${randomUUID()}@example.com` })
+      .returning(),
+  );
   const b = one(
     await db
       .insert(bots)
@@ -74,6 +82,7 @@ export async function seedTenant(label: string): Promise<SeededTenant> {
 
   return {
     tenantId: t.id,
+    userId: u.id,
     botId: b.id,
     sourceId: s.id,
     documentId: d.id,
