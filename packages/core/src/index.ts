@@ -34,3 +34,15 @@ export {
   type ParseFileData,
   type ParseTextData,
 } from "./queue/index.js";
+export {
+  crawlUrl,
+  crawlSitemap,
+  parseRobots,
+  parseSitemap,
+  extractLinks,
+  createPlaywrightFetcher,
+  type PageFetcher,
+  type FetchedPage,
+  type CrawlDeps,
+  type CrawlOptions,
+} from "./ingest/crawl.js";
