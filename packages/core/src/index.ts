@@ -68,3 +68,9 @@ export {
 } from "./ingest/orchestrate.js";
 export { rateLimit, type RateLimitResult } from "./ratelimit.js";
 export { rewriteQuery, type RewriteDeps } from "./query/rewrite.js";
+export {
+  retrieve,
+  type RetrievedChunk,
+  type RetrieveOptions,
+  type RetrieveDeps,
+} from "./query/retrieve.js";
