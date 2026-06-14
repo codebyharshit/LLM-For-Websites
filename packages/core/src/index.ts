@@ -66,3 +66,4 @@ export {
   type IngestDocInput,
   type IngestDocResult,
 } from "./ingest/orchestrate.js";
+export { rateLimit, type RateLimitResult } from "./ratelimit.js";

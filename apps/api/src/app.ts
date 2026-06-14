@@ -5,9 +5,14 @@ import { makeRedisConnection, createIngestQueue } from "@supportrag/core";
 import { authPlugin } from "./auth/plugin.js";
 import { authRoutes } from "./auth/routes.js";
 import { sourcesRoutes } from "./routes/sources.js";
+import { chatRoutes } from "./routes/chat.js";
+
+export interface BuildAppOptions {
+  chatRateLimit?: { limit: number; windowSec: number };
+}
 
 /** Build the Fastify app (no listen) so tests can use app.inject(). */
-export async function buildApp(): Promise<FastifyInstance> {
+export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
   const env = getEnv();
   const connection = makeRedisConnection(env.REDIS_URL);
@@ -31,6 +36,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authPlugin);
   await app.register(authRoutes);
   await sourcesRoutes(app, { queue });
+  await chatRoutes(app, {
+    redis: connection,
+    ...(opts.chatRateLimit ? { rateLimit: opts.chatRateLimit } : {}),
+  });
   app.get("/health", async () => ({ ok: true }));
 
   app.addHook("onClose", async () => {
