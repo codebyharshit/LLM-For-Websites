@@ -14,7 +14,11 @@ export {
   embedBatched,
   makeOpenAIEmbeddingClient,
 } from "./llm/providers/openai.js";
-export { rerankCohere } from "./llm/providers/cohere.js";
+export {
+  makeCohereRerankClient,
+  COHERE_RERANK_MODEL,
+  type RerankClient,
+} from "./llm/providers/cohere.js";
 export { generateGemini } from "./llm/providers/gemini.js";
 export { generateAnthropic } from "./llm/providers/anthropic.js";
 export { FakeLLMRouter, hashEmbed, overlapScore } from "./llm/fake.js";
@@ -74,3 +78,10 @@ export {
   type RetrieveOptions,
   type RetrieveDeps,
 } from "./query/retrieve.js";
+export {
+  rerankAndGate,
+  type RankedChunk,
+  type RerankGateResult,
+  type RerankDeps,
+  type RerankOptions,
+} from "./query/rerank.js";

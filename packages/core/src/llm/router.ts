@@ -2,6 +2,7 @@ import type { ChatMsg } from "@supportrag/shared";
 import type { Env } from "@supportrag/shared";
 import { NotImplementedError } from "./errors.js";
 import { embedBatched, makeOpenAIEmbeddingClient, type EmbeddingClient } from "./providers/openai.js";
+import { makeCohereRerankClient, type RerankClient } from "./providers/cohere.js";
 
 export interface RerankResult {
   id: string;
@@ -46,6 +47,7 @@ export interface LLMRouter {
 export interface LLMRouterDeps {
   embeddingClient: EmbeddingClient;
   dims: number;
+  rerankClient?: RerankClient;
 }
 
 /**
@@ -59,8 +61,13 @@ export class DefaultLLMRouter implements LLMRouter {
     return embedBatched(this.deps.embeddingClient, texts, { dims: this.deps.dims });
   }
 
-  async rerank(): Promise<RerankResult[]> {
-    throw new NotImplementedError("rerank");
+  async rerank(
+    query: string,
+    docs: { id: string; text: string }[],
+    topN: number,
+  ): Promise<RerankResult[]> {
+    if (!this.deps.rerankClient) throw new NotImplementedError("rerank");
+    return this.deps.rerankClient.rerank(query, docs, topN);
   }
 
   // Stub generator: throws until wired in T2.6.
@@ -74,5 +81,6 @@ export function createLLMRouter(env: Env): LLMRouter {
   return new DefaultLLMRouter({
     embeddingClient: makeOpenAIEmbeddingClient(env.OPENAI_API_KEY, env.EMBEDDING_MODEL),
     dims: env.EMBEDDING_DIMS,
+    rerankClient: makeCohereRerankClient(env.COHERE_API_KEY),
   });
 }
