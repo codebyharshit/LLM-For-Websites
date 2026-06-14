@@ -26,6 +26,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <a href="/bot" style={{ color: "#fff" }}>
               Bot
             </a>
+            <a href="/rules" style={{ color: "#fff" }}>
+              Rules
+            </a>
             <a href="/conversations" style={{ color: "#fff" }}>
               Conversations
             </a>
