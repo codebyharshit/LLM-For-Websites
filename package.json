@@ -1,0 +1,31 @@
+{
+  "name": "support-rag-platform",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @supportrag/db db:generate",
+    "db:migrate": "pnpm --filter @supportrag/db db:migrate",
+    "db:seed": "pnpm --filter @supportrag/db db:seed"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@supportrag/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@supportrag/core": "workspace:*",
+    "@supportrag/db": "workspace:*",
+    "@supportrag/shared": "workspace:*"
+  }
+}

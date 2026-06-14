@@ -1,0 +1,26 @@
+{
+  "name": "@supportrag/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src",
+    "db:generate": "echo \"db:generate wired in T0.3\"",
+    "db:migrate": "echo \"db:migrate wired in T0.3\"",
+    "db:seed": "echo \"db:seed wired in T0.7\""
+  },
+  "dependencies": {
+    "@supportrag/shared": "workspace:*"
+  }
+}
