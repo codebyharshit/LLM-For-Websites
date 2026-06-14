@@ -1,11 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import type { Queue } from "bullmq";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { AppError } from "@supportrag/shared";
 import { withTenant, bots, sources } from "@supportrag/db";
 import { enqueueIngest, type IngestJobName, type IngestJobMap } from "@supportrag/core";
 import { requireAuth } from "../auth/plugin.js";
+
+const IdParam = z.object({ id: z.string().uuid() });
 
 const SourceBody = z.discriminatedUnion("type", [
   z.object({
@@ -56,6 +58,50 @@ export async function sourcesRoutes(app: FastifyInstance, deps: SourcesRouteDeps
     const jobId = await enqueueIngest(deps.queue, name, data, { jobId: source.id });
 
     return reply.code(202).send({ job_id: jobId, source_id: source.id });
+  });
+
+  // List sources for the tenant (RLS-scoped), newest first.
+  app.get("/sources", { preHandler: requireAuth }, async (req, reply) => {
+    const { tenantId } = req.session!;
+    const rows = await withTenant(tenantId, (db) =>
+      db.select().from(sources).orderBy(desc(sources.createdAt)),
+    );
+    return reply.send(rows);
+  });
+
+  // Re-ingest a source (url/sitemap only). Resets status to pending and re-enqueues.
+  app.post("/sources/:id/resync", { preHandler: requireAuth }, async (req, reply) => {
+    const { id } = IdParam.parse(req.params);
+    const { tenantId } = req.session!;
+    const src = await withTenant(tenantId, async (db) => {
+      const [row] = await db.select().from(sources).where(eq(sources.id, id));
+      if (!row) return null;
+      await db
+        .update(sources)
+        .set({ status: "pending", error: null, updatedAt: new Date() })
+        .where(eq(sources.id, id));
+      return row;
+    });
+    if (!src) throw new AppError("source_not_found", "source not found", 404);
+    if (src.type === "text" || src.type === "file") {
+      throw new AppError("cannot_resync", `cannot resync a ${src.type} source`, 400);
+    }
+    const name = src.type === "sitemap" ? "crawl_sitemap" : "crawl_url";
+    await enqueueIngest(
+      deps.queue,
+      name,
+      { tenantId, botId: src.botId, sourceId: src.id, url: src.location ?? "" },
+      { jobId: src.id },
+    );
+    return reply.code(202).send({ job_id: src.id });
+  });
+
+  // Delete a source (cascades to its documents + chunks).
+  app.delete("/sources/:id", { preHandler: requireAuth }, async (req, reply) => {
+    const { id } = IdParam.parse(req.params);
+    const { tenantId } = req.session!;
+    await withTenant(tenantId, (db) => db.delete(sources).where(eq(sources.id, id)));
+    return reply.send({ ok: true });
   });
 }
 

@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import cors from "@fastify/cors";
 import { ZodError } from "zod";
 import { AppError, getEnv, logger } from "@supportrag/shared";
 import {
@@ -42,6 +43,8 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
       .send({ error: status >= 500 ? "internal_error" : "bad_request", message });
   });
 
+  // Dashboard runs on a different port; allow credentialed requests from it.
+  await app.register(cors, { origin: env.APP_BASE_URL, credentials: true });
   await app.register(authPlugin);
   await app.register(authRoutes);
   await sourcesRoutes(app, { queue });

@@ -86,4 +86,42 @@ describe("POST /sources", () => {
     });
     expect(res.statusCode).toBe(400);
   });
+
+  async function createUrlSource(url: string): Promise<string> {
+    const res = await app.inject({
+      method: "POST",
+      url: "/sources",
+      cookies: { sid },
+      payload: { type: "url", botId: BUYCYCLE.botId, url },
+    });
+    return res.json<{ source_id: string }>().source_id;
+  }
+
+  it("lists the tenant's sources", async () => {
+    const id = await createUrlSource("https://example.com/list-me");
+    const res = await app.inject({ method: "GET", url: "/sources", cookies: { sid } });
+    expect(res.statusCode).toBe(200);
+    const rows = res.json<{ id: string }[]>();
+    expect(rows.some((r) => r.id === id)).toBe(true);
+  });
+
+  it("resyncs a url source (202)", async () => {
+    const id = await createUrlSource("https://example.com/resync");
+    const res = await app.inject({
+      method: "POST",
+      url: `/sources/${id}/resync`,
+      cookies: { sid },
+    });
+    expect(res.statusCode).toBe(202);
+    const [row] = await getAdminDb().select().from(sourcesTable).where(eq(sourcesTable.id, id));
+    expect(row?.status).toBe("pending");
+  });
+
+  it("deletes a source", async () => {
+    const id = await createUrlSource("https://example.com/delete-me");
+    const del = await app.inject({ method: "DELETE", url: `/sources/${id}`, cookies: { sid } });
+    expect(del.statusCode).toBe(200);
+    const [row] = await getAdminDb().select().from(sourcesTable).where(eq(sourcesTable.id, id));
+    expect(row).toBeUndefined();
+  });
 });
