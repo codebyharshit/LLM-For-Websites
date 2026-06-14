@@ -55,3 +55,9 @@ export {
 } from "./ingest/parse.js";
 export { htmlToMarkdown } from "./ingest/html.js";
 export { cleanHtml, type CleanedDoc } from "./ingest/clean.js";
+export {
+  chunkMarkdown,
+  countTokens,
+  type Chunk,
+  type ChunkOptions,
+} from "./ingest/chunk.js";
