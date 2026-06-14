@@ -16,11 +16,18 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
-    "db:generate": "echo \"db:generate wired in T0.3\"",
-    "db:migrate": "echo \"db:migrate wired in T0.3\"",
-    "db:seed": "echo \"db:seed wired in T0.7\""
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:seed": "tsx src/seed.ts"
   },
   "dependencies": {
-    "@supportrag/shared": "workspace:*"
+    "@supportrag/shared": "workspace:*",
+    "drizzle-orm": "^0.38.3",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.30.1",
+    "tsx": "^4.19.2"
   }
 }
