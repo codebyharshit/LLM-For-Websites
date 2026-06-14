@@ -17,6 +17,7 @@
     "@supportrag/db": "workspace:*",
     "@supportrag/shared": "workspace:*",
     "bullmq": "^5.34.5",
+    "drizzle-orm": "^0.38.3",
     "ioredis": "5.10.1"
   }
 }

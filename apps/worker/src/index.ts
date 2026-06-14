@@ -1,12 +1,22 @@
 import { getEnv, logger } from "@supportrag/shared";
-import { makeRedisConnection, createIngestWorker } from "@supportrag/core";
+import {
+  makeRedisConnection,
+  createIngestWorker,
+  createLLMRouter,
+  createPlaywrightFetcher,
+} from "@supportrag/core";
 import { closePool } from "@supportrag/db";
 import { makeHandlers } from "./handlers.js";
 
 export async function main(): Promise<void> {
   const env = getEnv();
   const connection = makeRedisConnection(env.REDIS_URL);
-  const worker = createIngestWorker(connection, makeHandlers(), { concurrency: 4 });
+  const router = createLLMRouter(env);
+  const handlers = makeHandlers({
+    router,
+    createFetcher: () => createPlaywrightFetcher(),
+  });
+  const worker = createIngestWorker(connection, handlers, { concurrency: 4 });
   logger.info("ingest worker started");
 
   const shutdown = async (signal: string): Promise<void> => {

@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
+import { randomUUID } from "node:crypto";
 import type { Redis } from "ioredis";
 import type { Queue, Worker } from "bullmq";
 import {
@@ -41,13 +42,14 @@ describe("ingest queue + worker", () => {
     cleanup.push(() => qConn.quit());
     cleanup.push(() => wConn.quit());
 
+    const uniqueId = `test-job-${randomUUID()}`;
     const jobId = await enqueueIngest(
       queue,
       "parse_text",
       { tenantId: "t", botId: "b", sourceId: "src-123", text: "hello" },
-      { jobId: "test-job-1" },
+      { jobId: uniqueId },
     );
-    expect(jobId).toBe("test-job-1");
+    expect(jobId).toBe(uniqueId);
 
     await done;
     expect(handled).toBe("src-123");
