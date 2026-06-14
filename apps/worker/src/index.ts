@@ -1,11 +1,29 @@
-import { logger } from "@supportrag/shared";
+import { getEnv, logger } from "@supportrag/shared";
+import { makeRedisConnection, createIngestWorker } from "@supportrag/core";
+import { closePool } from "@supportrag/db";
+import { makeHandlers } from "./handlers.js";
 
-// apps/worker: BullMQ worker process (ingestion jobs).
-// Stubbed at T0.1; queue + handlers land from T1.1 onward.
-export function main(): void {
-  logger.info("worker stub booted");
+export async function main(): Promise<void> {
+  const env = getEnv();
+  const connection = makeRedisConnection(env.REDIS_URL);
+  const worker = createIngestWorker(connection, makeHandlers(), { concurrency: 4 });
+  logger.info("ingest worker started");
+
+  const shutdown = async (signal: string): Promise<void> => {
+    logger.info({ signal }, "shutting down worker");
+    await worker.close();
+    await connection.quit();
+    await closePool();
+    process.exit(0);
+  };
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
 }
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
-  main();
+const invokedDirectly = process.argv[1] && import.meta.url.endsWith(process.argv[1]);
+if (invokedDirectly) {
+  main().catch((err: unknown) => {
+    logger.error({ err }, "worker failed to start");
+    process.exit(1);
+  });
 }

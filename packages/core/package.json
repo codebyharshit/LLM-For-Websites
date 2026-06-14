@@ -21,7 +21,9 @@
     "@supportrag/shared": "workspace:*",
     "@anthropic-ai/sdk": "^0.32.1",
     "@google/generative-ai": "^0.21.0",
+    "bullmq": "^5.34.5",
     "cohere-ai": "^7.15.0",
+    "ioredis": "5.10.1",
     "openai": "^4.77.0"
   }
 }

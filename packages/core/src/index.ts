@@ -19,3 +19,18 @@ export { generateGemini } from "./llm/providers/gemini.js";
 export { generateAnthropic } from "./llm/providers/anthropic.js";
 export { FakeLLMRouter, hashEmbed, overlapScore } from "./llm/fake.js";
 export { NotImplementedError, MissingApiKeyError } from "./llm/errors.js";
+export {
+  makeRedisConnection,
+  INGEST_QUEUE,
+  createIngestQueue,
+  createIngestWorker,
+  enqueueIngest,
+  type IngestJobName,
+  type IngestJobMap,
+  type IngestHandlers,
+  type EnqueueOptions,
+  type CrawlUrlData,
+  type CrawlSitemapData,
+  type ParseFileData,
+  type ParseTextData,
+} from "./queue/index.js";
