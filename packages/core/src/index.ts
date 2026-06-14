@@ -54,3 +54,4 @@ export {
   type ParsedKind,
 } from "./ingest/parse.js";
 export { htmlToMarkdown } from "./ingest/html.js";
+export { cleanHtml, type CleanedDoc } from "./ingest/clean.js";
