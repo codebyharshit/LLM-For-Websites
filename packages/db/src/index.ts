@@ -10,3 +10,4 @@ export {
 } from "./client.js";
 export { withTenant } from "./withTenant.js";
 export { seed, BUYCYCLE } from "./seed.js";
+export { deleteTenant } from "./admin.js";
