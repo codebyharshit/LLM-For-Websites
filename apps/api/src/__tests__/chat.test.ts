@@ -12,10 +12,22 @@ import {
   chunks as chunksTable,
   messages as messagesTable,
 } from "@supportrag/db";
-import { FakeLLMRouter, hashEmbed } from "@supportrag/core";
+import { FakeLLMRouter, hashEmbed, type LLMRouter, type GenerateDelta } from "@supportrag/core";
 import { buildApp } from "../app.js";
 
 const router = new FakeLLMRouter(1536);
+
+// Retrieval/rerank work, but every generation backend is down.
+function allModelsDownRouter(): LLMRouter {
+  const fake = new FakeLLMRouter(1536);
+  return {
+    embed: (t) => fake.embed(t),
+    rerank: (q, d, n) => fake.rerank(q, d, n),
+    async *generate(): AsyncIterable<GenerateDelta> {
+      throw new Error("all generation backends are down");
+    },
+  };
+}
 
 // Parse SSE payload into the list of (event, data) pairs.
 function parseSSE(payload: string): { event: string; data: unknown }[] {
@@ -135,6 +147,28 @@ describe("POST /v1/chat (full pipeline, FakeLLMRouter)", () => {
       payload: { session_id: randomUUID(), message: "hi" },
     });
     expect(res.statusCode).toBe(401);
+  });
+
+  it("returns the lead-capture fallback (not a 500) when all models are down", async () => {
+    const app2 = await buildApp({ router: allModelsDownRouter(), chatRateLimit: { limit: 50, windowSec: 60 } });
+    try {
+      const res = await app2.inject({
+        method: "POST",
+        url: "/v1/chat",
+        headers: { authorization: `Bearer ${BUYCYCLE.publicToken}` },
+        payload: { session_id: randomUUID(), message: "What is the bike return policy?" },
+      });
+      expect(res.statusCode).toBe(200); // SSE already opened; never a 500
+      expect(res.payload).toContain("event: error");
+      const done = parseSSE(res.payload).find((e) => e.event === "done")!.data as {
+        escalate: boolean;
+        model_used: string;
+      };
+      expect(done.escalate).toBe(true);
+      expect(done.model_used).toBe("none");
+    } finally {
+      await app2.close();
+    }
   });
 
   it("trips the rate limit", async () => {
