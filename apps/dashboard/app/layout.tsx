@@ -32,6 +32,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <a href="/conversations" style={{ color: "#fff" }}>
               Conversations
             </a>
+            <a href="/analytics" style={{ color: "#fff" }}>
+              Analytics
+            </a>
           </nav>
         </header>
         <main style={{ maxWidth: 900, margin: "24px auto", padding: "0 24px" }}>{children}</main>

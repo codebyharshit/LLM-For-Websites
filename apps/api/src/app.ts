@@ -18,6 +18,7 @@ import { widgetRoutes } from "./routes/widget.js";
 import { botRoutes } from "./routes/bot.js";
 import { conversationsRoutes } from "./routes/conversations.js";
 import { rulesRoutes } from "./routes/rules.js";
+import { analyticsRoutes } from "./routes/analytics.js";
 
 export interface BuildAppOptions {
   chatRateLimit?: { limit: number; windowSec: number };
@@ -59,6 +60,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await botRoutes(app);
   await conversationsRoutes(app);
   await rulesRoutes(app);
+  await analyticsRoutes(app);
   await chatRoutes(app, {
     redis: connection,
     router,
