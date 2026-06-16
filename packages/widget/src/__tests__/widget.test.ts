@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { initWidget } from "../widget.js";
 
 function streamFrom(text: string): ReadableStream<Uint8Array> {
