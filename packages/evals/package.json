@@ -9,11 +9,16 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "run": "tsx src/cli.ts"
   },
   "dependencies": {
     "@supportrag/shared": "workspace:*",
     "@supportrag/core": "workspace:*",
-    "@supportrag/db": "workspace:*"
+    "@supportrag/db": "workspace:*",
+    "drizzle-orm": "^0.38.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
   }
 }
