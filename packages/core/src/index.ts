@@ -74,6 +74,15 @@ export {
 } from "./ingest/orchestrate.js";
 export { rateLimit, type RateLimitResult } from "./ratelimit.js";
 export {
+  renderTranscript,
+  makeResendDelivery,
+  makeWebhookDelivery,
+  compositeDelivery,
+  createEscalationDelivery,
+  type EscalationPayload,
+  type EscalationDelivery,
+} from "./escalate.js";
+export {
   buildPrompt,
   type BuildPromptInput,
   type BuiltPrompt,

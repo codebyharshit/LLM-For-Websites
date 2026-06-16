@@ -10,6 +10,7 @@ import {
   conversations,
   messages as messagesTable,
 } from "@supportrag/db";
+import type { EscalationPayload } from "@supportrag/core";
 import { buildApp } from "../app.js";
 
 describe("widget endpoints", () => {
@@ -73,19 +74,34 @@ describe("widget endpoints", () => {
     expect(row?.feedback).toBe(1);
   });
 
-  it("POST /v1/escalate captures a lead on the conversation", async () => {
-    const res = await app.inject({
-      method: "POST",
-      url: "/v1/escalate",
-      headers: auth,
-      payload: { conversation_id: conversationId, email: "lead@example.com", note: "call me" },
+  it("POST /v1/escalate captures a lead and delivers the transcript", async () => {
+    const captured: EscalationPayload[] = [];
+    const app2 = await buildApp({
+      escalationDelivery: { deliver: async (p) => void captured.push(p) },
     });
-    expect(res.statusCode).toBe(200);
-    const [row] = await getAdminDb()
-      .select({ escalated: conversations.escalated, leadEmail: conversations.leadEmail })
-      .from(conversations)
-      .where(eq(conversations.id, conversationId));
-    expect(row?.escalated).toBe(true);
-    expect(row?.leadEmail).toBe("lead@example.com");
+    try {
+      const res = await app2.inject({
+        method: "POST",
+        url: "/v1/escalate",
+        headers: auth,
+        payload: { conversation_id: conversationId, email: "lead@example.com", note: "call me" },
+      });
+      expect(res.statusCode).toBe(200);
+
+      const [row] = await getAdminDb()
+        .select({ escalated: conversations.escalated, leadEmail: conversations.leadEmail })
+        .from(conversations)
+        .where(eq(conversations.id, conversationId));
+      expect(row?.escalated).toBe(true);
+      expect(row?.leadEmail).toBe("lead@example.com");
+
+      expect(captured).toHaveLength(1);
+      expect(captured[0]!.leadEmail).toBe("lead@example.com");
+      expect(captured[0]!.note).toBe("call me");
+      expect(captured[0]!.ownerEmail).toBe(BUYCYCLE.email);
+      expect(captured[0]!.transcript.length).toBeGreaterThan(0);
+    } finally {
+      await app2.close();
+    }
   });
 });

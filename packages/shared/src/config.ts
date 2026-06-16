@@ -15,6 +15,8 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().default(""), // fallback generation
   DEEPSEEK_API_KEY: z.string().default(""), // final fallback generation
   RESEND_API_KEY: z.string().default(""), // escalation email
+  ESCALATION_FROM_EMAIL: z.string().default("Support <onboarding@resend.dev>"),
+  ESCALATION_WEBHOOK_URL: z.string().default(""), // optional lead webhook
   OBJECT_STORE_BUCKET: z.string().default(""), // raw uploaded files (S3-compatible)
   APP_BASE_URL: z.string().url().default("http://localhost:3000"),
   WIDGET_CDN_URL: z.string().url().default("http://localhost:5173"),

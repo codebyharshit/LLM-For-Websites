@@ -6,7 +6,9 @@ import {
   makeRedisConnection,
   createIngestQueue,
   createLLMRouter,
+  createEscalationDelivery,
   type LLMRouter,
+  type EscalationDelivery,
 } from "@supportrag/core";
 import { authPlugin } from "./auth/plugin.js";
 import { authRoutes } from "./auth/routes.js";
@@ -21,6 +23,8 @@ export interface BuildAppOptions {
   chatRateLimit?: { limit: number; windowSec: number };
   /** Inject a router (tests use FakeLLMRouter to run the pipeline without keys). */
   router?: LLMRouter;
+  /** Inject escalation delivery (tests capture the payload). */
+  escalationDelivery?: EscalationDelivery;
 }
 
 /** Build the Fastify app (no listen) so tests can use app.inject(). */
@@ -30,6 +34,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   const connection = makeRedisConnection(env.REDIS_URL);
   const queue = createIngestQueue(connection);
   const router = opts.router ?? createLLMRouter(env);
+  const escalationDelivery = opts.escalationDelivery ?? createEscalationDelivery(env);
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof AppError) {
@@ -59,7 +64,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     router,
     ...(opts.chatRateLimit ? { rateLimit: opts.chatRateLimit } : {}),
   });
-  await widgetRoutes(app);
+  await widgetRoutes(app, { delivery: escalationDelivery });
   app.get("/health", async () => ({ ok: true }));
 
   app.addHook("onClose", async () => {
