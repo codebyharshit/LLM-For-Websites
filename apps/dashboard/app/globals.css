@@ -227,6 +227,10 @@ label.field .hint {
   background: #fee2e2;
   color: #b91c1c;
 }
+.badge.amber {
+  background: #fef3c7;
+  color: #b45309;
+}
 
 /* tables */
 table {

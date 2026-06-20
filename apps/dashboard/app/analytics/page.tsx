@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../lib/api";
+import { Spinner, PageHeader } from "../components/ui";
 
 interface Analytics {
   turns: number;
@@ -12,33 +13,49 @@ interface Analytics {
   byModel: Record<string, number>;
 }
 
+function Stat({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="card stat">
+      <div className="label">{label}</div>
+      <div className="value">{value}</div>
+    </div>
+  );
+}
+
 export default function AnalyticsPage() {
   const [a, setA] = useState<Analytics | null>(null);
 
   useEffect(() => {
-    void api<Analytics>("/analytics").then(setA).catch(() => undefined);
+    api<Analytics>("/analytics")
+      .then(setA)
+      .catch(() => undefined);
   }, []);
 
-  if (!a) return <p>Loading…</p>;
+  if (!a) return <Spinner />;
 
   return (
     <div>
-      <h1>Analytics</h1>
-      <ul>
-        <li>Turns: {a.turns}</li>
-        <li>Total cost: ${a.totalCostUsd.toFixed(4)}</li>
-        <li>Avg cost / turn: ${a.avgCostUsd.toFixed(5)}</li>
-        <li>First-token latency p50: {a.p50LatencyMs} ms</li>
-        <li>First-token latency p95: {a.p95LatencyMs} ms</li>
-      </ul>
-      <h2>By model</h2>
-      <ul>
-        {Object.entries(a.byModel).map(([model, count]) => (
-          <li key={model}>
-            {model}: {count}
-          </li>
-        ))}
-      </ul>
+      <PageHeader title="Analytics" subtitle="Usage and cost at a glance." />
+      <div className="cards">
+        <Stat label="Answers given" value={a.turns} />
+        <Stat label="Total cost" value={`$${a.totalCostUsd.toFixed(2)}`} />
+        <Stat label="Avg cost / answer" value={`$${a.avgCostUsd.toFixed(4)}`} />
+        <Stat label="Typical response" value={`${a.p50LatencyMs} ms`} />
+        <Stat label="Slowest 5%" value={`${a.p95LatencyMs} ms`} />
+      </div>
+      {Object.keys(a.byModel).length > 0 && (
+        <>
+          <h2>By model</h2>
+          <div className="card">
+            {Object.entries(a.byModel).map(([model, count]) => (
+              <div key={model} className="row" style={{ justifyContent: "space-between" }}>
+                <span>{model}</span>
+                <span className="muted">{count}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

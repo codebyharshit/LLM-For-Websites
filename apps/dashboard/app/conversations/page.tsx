@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { EmptyState, Spinner, PageHeader } from "../components/ui";
 
 interface Conversation {
   id: string;
@@ -13,36 +14,59 @@ interface Conversation {
 
 export default function ConversationsPage() {
   const [rows, setRows] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void api<Conversation[]>("/conversations").then(setRows).catch(() => undefined);
+    api<Conversation[]>("/conversations")
+      .then(setRows)
+      .catch(() => undefined)
+      .finally(() => setLoading(false));
   }, []);
 
   return (
     <div>
-      <h1>Conversations</h1>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
-            <th>Session</th>
-            <th>Escalated</th>
-            <th>Lead</th>
-            <th>Updated</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((c) => (
-            <tr key={c.id} style={{ borderBottom: "1px solid #eee" }}>
-              <td>
-                <a href={`/conversations/${c.id}`}>{c.sessionId.slice(0, 8)}…</a>
-              </td>
-              <td>{c.escalated ? "yes" : ""}</td>
-              <td>{c.leadEmail ?? ""}</td>
-              <td>{new Date(c.updatedAt).toLocaleString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <PageHeader
+        title="Conversations"
+        subtitle="Every chat your bot has had — review answers, feedback, and captured leads."
+      />
+      {loading ? (
+        <Spinner />
+      ) : rows.length === 0 ? (
+        <EmptyState
+          icon="💬"
+          title="No conversations yet"
+          hint="Once visitors chat with your bot, they'll appear here."
+        />
+      ) : (
+        <div className="card" style={{ padding: 0 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Status</th>
+                <th>Lead captured</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <a href={`/conversations/${c.id}`}>{new Date(c.updatedAt).toLocaleString()}</a>
+                  </td>
+                  <td>
+                    {c.escalated ? (
+                      <span className="badge amber">Sent to human</span>
+                    ) : (
+                      <span className="badge green">Answered</span>
+                    )}
+                  </td>
+                  <td>{c.leadEmail ?? <span className="muted">—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
