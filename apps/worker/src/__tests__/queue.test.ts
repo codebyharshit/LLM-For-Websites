@@ -22,7 +22,9 @@ describe("ingest queue + worker", () => {
   it("processes an enqueued job and reports completion", async () => {
     const qConn: Redis = makeRedisConnection(REDIS_URL);
     const wConn: Redis = makeRedisConnection(REDIS_URL);
-    const queue: Queue = createIngestQueue(qConn);
+    // Isolated queue name so this test never competes with jobs other suites enqueue.
+    const queueName = `ingest-test-${randomUUID()}`;
+    const queue: Queue = createIngestQueue(qConn, queueName);
 
     let handled: string | undefined;
     const done = new Promise<void>((resolve) => {
@@ -35,7 +37,7 @@ describe("ingest queue + worker", () => {
         async crawl_sitemap() {},
         async parse_file() {},
       };
-      const worker: Worker = createIngestWorker(wConn, handlers, { concurrency: 1 });
+      const worker: Worker = createIngestWorker(wConn, handlers, { concurrency: 1, queueName });
       cleanup.push(() => worker.close());
     });
     cleanup.push(() => queue.close());

@@ -87,6 +87,9 @@ export async function sourcesRoutes(app: FastifyInstance, deps: SourcesRouteDeps
       throw new AppError("cannot_resync", `cannot resync a ${src.type} source`, 400);
     }
     const name = src.type === "sitemap" ? "crawl_sitemap" : "crawl_url";
+    // BullMQ dedupes by jobId across all states, so a prior completed/failed job with this id
+    // would block re-enqueue. Remove it first so resync actually re-runs.
+    await deps.queue.remove(src.id).catch(() => undefined);
     await enqueueIngest(
       deps.queue,
       name,

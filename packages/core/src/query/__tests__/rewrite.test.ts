@@ -50,4 +50,23 @@ describe("rewriteQuery", () => {
     const out = await rewriteQuery("hello", [{ role: "user", content: "hi" }], { router });
     expect(out).toBe("hello");
   });
+
+  const policyHistory: ChatMsg[] = [
+    { role: "user", content: "What is the revocation deadline?" },
+    { role: "assistant", content: "14 days." },
+  ];
+
+  it("passes through a clear standalone question even with history (no over-attach)", async () => {
+    const { router, calls } = stubRouter("UNUSED");
+    const out = await rewriteQuery("How much is express shipping?", policyHistory, { router });
+    expect(out).toBe("How much is express shipping?"); // no pronoun/connector → not rewritten
+    expect(calls()).toBe(0);
+  });
+
+  it("still rewrites a pronoun follow-up using history", async () => {
+    const { router, calls } = stubRouter("When does the revocation period start?");
+    const out = await rewriteQuery("when does that period start?", policyHistory, { router });
+    expect(out).toBe("When does the revocation period start?"); // "that" → rewritten
+    expect(calls()).toBe(1);
+  });
 });

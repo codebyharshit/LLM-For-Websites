@@ -3,6 +3,9 @@ import type { LLMRouter } from "../llm/router.js";
 import type { RetrievedChunk } from "./retrieve.js";
 import { MissingApiKeyError, NotImplementedError } from "../llm/errors.js";
 
+// Log the rerank-unavailable fallback only once, not on every chat turn.
+let warnedRerankUnavailable = false;
+
 export interface RankedChunk extends RetrievedChunk {
   rerankScore: number;
 }
@@ -50,7 +53,10 @@ export async function rerankAndGate(
     // retrieval (RRF) order. The τ gate is rerank-score-specific, so in this mode we gate
     // only on emptiness; the grounded prompt still makes the model refuse off-topic asks.
     if (err instanceof MissingApiKeyError || err instanceof NotImplementedError) {
-      logger.warn("reranker unavailable; falling back to fused retrieval order");
+      if (!warnedRerankUnavailable) {
+        logger.warn("reranker unavailable; falling back to fused retrieval order (logged once)");
+        warnedRerankUnavailable = true;
+      }
       const chunks = candidates.slice(0, topN).map((c) => ({ ...c, rerankScore: c.score }));
       return { gated: chunks.length === 0, topScore: chunks[0]?.rerankScore ?? 0, chunks };
     }

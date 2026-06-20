@@ -11,10 +11,24 @@ const SYSTEM =
   "and the follow-up, produce a single self-contained question that resolves pronouns and " +
   "implicit references using the conversation. Output ONLY the rewritten question — no preamble.";
 
+const FOLLOWUP_START = /^(and|but|or|so|also|then|what about|how about|ok(ay)?|plus)\b/i;
+const PRONOUN = /\b(it|its|it's|that|this|those|these|they|them|their|theirs|one|ones)\b/i;
+
 /**
- * Condense a follow-up into a standalone question using recent history. With no prior
- * conversation there is nothing to condense, so the message passes through unchanged
- * (and the model is not called).
+ * A message needs rewriting only if it references the prior turns — it starts with a follow-up
+ * connector, contains a referential pronoun, or is very short. A clear standalone question is
+ * left alone, so we don't over-attach stale context on a topic change.
+ */
+function isLikelyFollowUp(message: string): boolean {
+  const m = message.trim();
+  const words = m.split(/\s+/).filter(Boolean).length;
+  if (words <= 2) return true;
+  return FOLLOWUP_START.test(m) || PRONOUN.test(m);
+}
+
+/**
+ * Condense a follow-up into a standalone question using recent history. Passes through (no model
+ * call) when there is no history OR the message is already a self-contained question.
  */
 export async function rewriteQuery(
   message: string,
@@ -22,7 +36,7 @@ export async function rewriteQuery(
   deps: RewriteDeps,
 ): Promise<string> {
   const prior = history.filter((m) => m.role !== "system");
-  if (prior.length === 0) return message;
+  if (prior.length === 0 || !isLikelyFollowUp(message)) return message;
 
   const turns = prior.slice(-(deps.maxHistoryTurns ?? 6));
   const convo = turns.map((m) => `${m.role}: ${m.content}`).join("\n");

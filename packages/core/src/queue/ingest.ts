@@ -54,8 +54,8 @@ const defaultJobOptions = {
   removeOnFail: 5000,
 };
 
-export function createIngestQueue(connection: Redis): Queue {
-  return new Queue(INGEST_QUEUE, { connection, defaultJobOptions });
+export function createIngestQueue(connection: Redis, name: string = INGEST_QUEUE): Queue {
+  return new Queue(name, { connection, defaultJobOptions });
 }
 
 export interface EnqueueOptions {
@@ -80,10 +80,10 @@ export async function enqueueIngest<N extends IngestJobName>(
 export function createIngestWorker(
   connection: Redis,
   handlers: IngestHandlers,
-  opts: { concurrency?: number } = {},
+  opts: { concurrency?: number; queueName?: string } = {},
 ): Worker {
   const worker = new Worker(
-    INGEST_QUEUE,
+    opts.queueName ?? INGEST_QUEUE,
     async (job: Job) => {
       const name = job.name as IngestJobName;
       const handler = handlers[name] as

@@ -21,6 +21,9 @@ export interface HandlerDeps {
   fetchText?: (url: string) => Promise<string | null>;
 }
 
+const NO_CONTENT_MESSAGE =
+  "No readable content found — the page may be empty, login-gated, or bot-protected (e.g. Cloudflare).";
+
 /** Crawl a single URL (same-origin, depth-limited), clean + ingest each page. */
 export async function ingestCrawlUrl(data: CrawlUrlData, deps: HandlerDeps): Promise<void> {
   const { tenantId, botId, sourceId, url, depth } = data;
@@ -43,6 +46,16 @@ export async function ingestCrawlUrl(data: CrawlUrlData, deps: HandlerDeps): Pro
         { router: deps.router },
       );
       chunkCount += res.chunkCount;
+    }
+    if (chunkCount === 0) {
+      // Pages fetched but nothing usable extracted (empty / blocked / login page).
+      await setSourceStatus(tenantId, sourceId, {
+        status: "error",
+        pageCount: pages.length,
+        chunkCount: 0,
+        error: NO_CONTENT_MESSAGE,
+      });
+      return;
     }
     await setSourceStatus(tenantId, sourceId, {
       status: "synced",
@@ -81,6 +94,15 @@ export async function ingestCrawlSitemap(
       );
       chunkCount += res.chunkCount;
       pageCount++;
+    }
+    if (chunkCount === 0) {
+      await setSourceStatus(tenantId, sourceId, {
+        status: "error",
+        pageCount,
+        chunkCount: 0,
+        error: NO_CONTENT_MESSAGE,
+      });
+      return;
     }
     await setSourceStatus(tenantId, sourceId, {
       status: "synced",

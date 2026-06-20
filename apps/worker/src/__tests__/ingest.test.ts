@@ -41,6 +41,13 @@ const badFetcher: PageFetcher = {
   },
 };
 
+// Fetches OK but the page has no extractable content (e.g. a Cloudflare "Just a moment" page).
+const emptyFetcher: PageFetcher = {
+  async fetch(url) {
+    return { url, title: "Just a moment...", html: "<nav>menu</nav><footer>foot</footer>" };
+  },
+};
+
 describe("worker ingest handlers + source status", () => {
   let tenantId: string;
   let botId: string;
@@ -101,6 +108,18 @@ describe("worker ingest handlers + source status", () => {
     const src = await getSource(sourceId);
     expect(src.status).toBe("error");
     expect(src.error).toMatch(/connection refused/);
+  });
+
+  it("crawl_url: pages fetched but no readable content → error, not synced", async () => {
+    const sourceId = await makeSource("url", "https://blocked.test/page");
+    await ingestCrawlUrl(
+      { tenantId, botId, sourceId, url: "https://blocked.test/page", depth: 0 },
+      { router, createFetcher: async () => emptyFetcher, fetchText },
+    );
+    const src = await getSource(sourceId);
+    expect(src.status).toBe("error");
+    expect(src.error).toMatch(/no readable content/i);
+    expect(src.chunkCount).toBe(0);
   });
 
   it("parse_text: ingests inline text and marks synced", async () => {
