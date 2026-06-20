@@ -1,0 +1,93 @@
+# Render Blueprint — provisions the whole stack from this repo.
+# In Render: New → Blueprint → connect codebyharshit/LLM-For-Websites → Apply.
+# Then fill the secret keys (marked sync:false) and the two URL vars (see NOTE).
+#
+# NOTE on URLs: Render service properties give a bare host (no scheme), but the
+# app needs full https URLs. After the first deploy, set these explicitly in the
+# dashboard (the names are predictable: https://<service-name>.onrender.com):
+#   supportrag-api       → APP_BASE_URL        = https://supportrag-dashboard.onrender.com
+#   supportrag-dashboard → NEXT_PUBLIC_API_URL = https://supportrag-api.onrender.com   (also set as a Build-time var)
+
+databases:
+  - name: supportrag-postgres
+    databaseName: supportrag
+    plan: free # 1GB, expires after 90 days; pgvector is enabled by our migration
+    postgresMajorVersion: "16"
+
+services:
+  - type: redis
+    name: supportrag-redis
+    plan: free
+    ipAllowList: [] # internal only
+
+  - type: web
+    name: supportrag-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEV_AUTH_BYPASS
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: supportrag-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: supportrag-redis
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: APP_BASE_URL # see NOTE — set to the dashboard https URL after first deploy
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+
+  - type: worker # NOTE: Render background workers require a paid instance (~$7/mo)
+    name: supportrag-worker
+    runtime: docker
+    dockerfilePath: ./apps/worker/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: supportrag-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: supportrag-redis
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+
+  - type: web
+    name: supportrag-dashboard
+    runtime: docker
+    dockerfilePath: ./apps/dashboard/Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      # Build-time: must be the API's https URL (inlined into the bundle). See NOTE.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
