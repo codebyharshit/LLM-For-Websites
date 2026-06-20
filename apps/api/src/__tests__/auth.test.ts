@@ -35,7 +35,7 @@ describe("magic-link auth + tenant scoping", () => {
       method: "GET",
       url: `/auth/callback?token=${encodeURIComponent(devToken)}`,
     });
-    expect(cb.statusCode).toBe(200);
+    expect(cb.statusCode).toBe(302); // redirects to the dashboard, with the session cookie set
     const sid = cb.cookies.find((c) => c.name === "sid");
     expect(sid?.value).toBeTruthy();
 

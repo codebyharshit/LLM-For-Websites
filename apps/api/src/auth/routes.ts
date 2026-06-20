@@ -27,9 +27,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       return reply.send({ ok: true });
     }
     const token = sign({ email, exp: nowSeconds() + MAGIC_TTL }, env.SESSION_SECRET);
-    const devLink = `${env.APP_BASE_URL}/auth/callback?token=${encodeURIComponent(token)}`;
+    // The callback lives on this API (not the dashboard), so build the link from the request host.
+    const devLink = `${req.protocol}://${req.host}/auth/callback?token=${encodeURIComponent(token)}`;
     logger.info({ email }, "magic link issued");
-    return reply.send({ ok: true, devLink, devToken: token });
+    // Email delivery (Resend) lands later; until then, return the link in dev (http) only.
+    const isDev = !env.APP_BASE_URL.startsWith("https");
+    return reply.send(isDev ? { ok: true, devLink, devToken: token } : { ok: true });
   });
 
   app.get("/auth/callback", async (req, reply) => {
@@ -52,7 +55,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       secure: env.APP_BASE_URL.startsWith("https"),
       maxAge: SESSION_TTL,
     });
-    return reply.send({ ok: true });
+    // Clicking the link lands the user in the dashboard, logged in.
+    return reply.redirect(env.APP_BASE_URL);
   });
 
   app.post("/auth/logout", async (_req, reply) => {
