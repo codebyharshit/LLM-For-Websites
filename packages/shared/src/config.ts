@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { loadDotenv } from "./dotenv.js";
 
 /**
  * Environment contract (§A.1). Infra connection strings are required so the system
@@ -24,6 +25,11 @@ const EnvSchema = z.object({
   EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
   EMBEDDING_DIMS: z.coerce.number().int().positive().default(1536),
   CONFIDENCE_TAU: z.coerce.number().default(0.3),
+  // DEV ONLY: when true, skip session auth and resolve to the seed tenant. Never enable in prod.
+  DEV_AUTH_BYPASS: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true" || v === "1"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
@@ -50,5 +56,9 @@ let cached: Env | undefined;
  * never throws (so tests and tooling can import freely without a full env).
  */
 export function getEnv(): Env {
-  return (cached ??= parseEnv());
+  if (!cached) {
+    loadDotenv(); // fill from the root .env (does not override already-set vars)
+    cached = parseEnv();
+  }
+  return cached;
 }

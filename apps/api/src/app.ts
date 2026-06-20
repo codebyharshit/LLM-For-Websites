@@ -52,8 +52,11 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
       .send({ error: status >= 500 ? "internal_error" : "bad_request", message });
   });
 
-  // Dashboard runs on a different port; allow credentialed requests from it.
-  await app.register(cors, { origin: env.APP_BASE_URL, credentials: true });
+  // The public widget endpoints (/v1/*) are embedded on arbitrary customer origins, so we
+  // reflect the request origin (origin: true). credentials:true keeps the cookie-based
+  // dashboard working. NOTE for prod: split this — open CORS for /v1/* only, and restrict
+  // the tenant/dashboard routes to APP_BASE_URL.
+  await app.register(cors, { origin: true, credentials: true });
   await app.register(authPlugin);
   await app.register(authRoutes);
   await sourcesRoutes(app, { queue });

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Buycycle — Widget Test Page</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 720px; margin: 60px auto; padding: 0 20px; color: #222; }
+      code { background: #f1f1f1; padding: 2px 5px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>Pretend customer website</h1>
+    <p>
+      This is a blank page with nothing but the embed snippet. The chat bubble should appear
+      in the bottom-right. Click it and ask something you've ingested, e.g.
+      <em>"How much is express shipping?"</em>
+    </p>
+    <p>Try the buttons after an answer: 👍 / 👎 feedback, source links, and "Talk to a human".</p>
+
+    <!-- The one line a customer pastes on their site: -->
+    <script
+      src="./dist/widget.js"
+      data-bot-token="pk_buycycle_dev_000000000000"
+      data-api-url="http://localhost:3001"
+    ></script>
+  </body>
+</html>

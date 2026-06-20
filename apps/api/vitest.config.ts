@@ -9,6 +9,8 @@ export default defineConfig({
     env: {
       DATABASE_URL: process.env.DATABASE_URL ?? "postgres://app:app@localhost:5432/supportrag",
       REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
+      // Keep auth real in tests (the .env dev bypass must not leak in).
+      DEV_AUTH_BYPASS: "false",
     },
     fileParallelism: false,
     testTimeout: 20000,
