@@ -1,7 +1,7 @@
 /** Approximate USD price per 1M tokens (input/output) per model. */
 const PRICES: Record<string, { in: number; out: number }> = {
-  "gemini-1.5-flash": { in: 0.075, out: 0.3 },
-  "claude-3-5-haiku-latest": { in: 0.8, out: 4.0 },
+  "gemini-2.5-flash": { in: 0.3, out: 2.5 },
+  "claude-haiku-4-5": { in: 1.0, out: 5.0 },
   "deepseek-chat": { in: 0.27, out: 1.1 },
   "text-embedding-3-small": { in: 0.02, out: 0 },
 };

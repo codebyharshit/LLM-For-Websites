@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { GenerateClient, GenerateOptions, GenerateDelta } from "../router.js";
 import { MissingApiKeyError } from "../errors.js";
 
-export const ANTHROPIC_MODEL = "claude-3-5-haiku-latest";
+export const ANTHROPIC_MODEL = "claude-haiku-4-5";
 
 /** Claude Haiku (fallback generation). Key checked at call-time. */
 export function makeAnthropicClient(apiKey: string, model = ANTHROPIC_MODEL): GenerateClient {

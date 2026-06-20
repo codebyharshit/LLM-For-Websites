@@ -40,5 +40,12 @@ export async function rewriteQuery(
   }
 
   const rewritten = out.trim();
-  return rewritten.length > 0 ? rewritten : message;
+  // Guard against degenerate/truncated rewrites: a standalone rewrite normally expands the
+  // follow-up with context, so a much shorter result means the model failed — keep the original.
+  const origWords = message.trim().split(/\s+/).filter(Boolean).length;
+  const newWords = rewritten.split(/\s+/).filter(Boolean).length;
+  if (rewritten.length === 0 || (origWords > 3 && newWords < Math.max(2, origWords * 0.5))) {
+    return message;
+  }
+  return rewritten;
 }

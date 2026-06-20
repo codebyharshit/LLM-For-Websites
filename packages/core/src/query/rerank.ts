@@ -1,5 +1,7 @@
+import { logger } from "@supportrag/shared";
 import type { LLMRouter } from "../llm/router.js";
 import type { RetrievedChunk } from "./retrieve.js";
+import { MissingApiKeyError, NotImplementedError } from "../llm/errors.js";
 
 export interface RankedChunk extends RetrievedChunk {
   rerankScore: number;
@@ -35,11 +37,25 @@ export async function rerankAndGate(
   if (candidates.length === 0) return { gated: true, topScore: 0, chunks: [] };
 
   const topN = opts.topN ?? 5;
-  const ranked = await deps.router.rerank(
-    query,
-    candidates.map((c) => ({ id: c.id, text: c.content })),
-    topN,
-  );
+
+  let ranked;
+  try {
+    ranked = await deps.router.rerank(
+      query,
+      candidates.map((c) => ({ id: c.id, text: c.content })),
+      topN,
+    );
+  } catch (err) {
+    // No reranker configured (e.g. no Cohere key) — degrade gracefully to the fused
+    // retrieval (RRF) order. The τ gate is rerank-score-specific, so in this mode we gate
+    // only on emptiness; the grounded prompt still makes the model refuse off-topic asks.
+    if (err instanceof MissingApiKeyError || err instanceof NotImplementedError) {
+      logger.warn("reranker unavailable; falling back to fused retrieval order");
+      const chunks = candidates.slice(0, topN).map((c) => ({ ...c, rerankScore: c.score }));
+      return { gated: chunks.length === 0, topScore: chunks[0]?.rerankScore ?? 0, chunks };
+    }
+    throw err;
+  }
 
   const byId = new Map(candidates.map((c) => [c.id, c]));
   const chunks: RankedChunk[] = ranked
