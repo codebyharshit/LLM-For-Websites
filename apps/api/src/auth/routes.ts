@@ -66,8 +66,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       secure: isHttps,
       maxAge: SESSION_TTL,
     });
-    // Clicking the link lands the user in the dashboard, logged in.
-    return reply.redirect(env.APP_BASE_URL);
+    // Hand the session token to the dashboard in the URL fragment (not sent to servers/logs) so it
+    // can store it and authenticate via a Bearer header — works even where cross-site cookies are
+    // blocked (Safari/Brave). The cookie above still covers same-origin setups.
+    return reply.redirect(`${env.APP_BASE_URL}/auth/complete#token=${encodeURIComponent(session)}`);
   });
 
   app.post("/auth/logout", async (_req, reply) => {

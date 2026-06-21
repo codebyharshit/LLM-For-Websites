@@ -22,7 +22,12 @@ export const authPlugin = fp(async (app) => {
     logger.warn("DEV_AUTH_BYPASS is ON — session auth is skipped, resolving to the seed tenant");
   }
   app.addHook("onRequest", async (req: FastifyRequest) => {
-    const raw = req.cookies[SESSION_COOKIE];
+    // Accept the session from the cookie (same-origin) or a Bearer header (cross-domain dashboards,
+    // where Safari/Brave block third-party cookies).
+    const cookieTok = req.cookies[SESSION_COOKIE];
+    const authz = req.headers.authorization;
+    const bearer = authz?.startsWith("Bearer ") ? authz.slice("Bearer ".length) : undefined;
+    const raw = cookieTok ?? bearer;
     req.session = raw ? verify<SessionPayload>(raw, env.SESSION_SECRET) : null;
     // DEV ONLY: no cookie + bypass enabled → act as the seeded Buycycle owner.
     if (!req.session && env.DEV_AUTH_BYPASS) {

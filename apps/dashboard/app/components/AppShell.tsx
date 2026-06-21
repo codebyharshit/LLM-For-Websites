@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { api, ApiError } from "../lib/api";
+import { api, ApiError, clearToken } from "../lib/api";
 
 interface Me {
   userId: string;
@@ -24,10 +24,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
   const [state, setState] = useState<"loading" | "authed" | "anon">("loading");
-  const isLogin = pathname === "/login";
+  // /login and the /auth/* callback pages must render without the auth gate (the token is being set).
+  const isPublic = pathname === "/login" || pathname.startsWith("/auth/");
 
   useEffect(() => {
-    if (isLogin) return;
+    if (isPublic) return;
     let active = true;
     void (async () => {
       try {
@@ -45,14 +46,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [pathname, isLogin, router]);
+  }, [pathname, isPublic, router]);
 
-  if (isLogin) return <>{children}</>;
+  if (isPublic) return <>{children}</>;
   if (state === "loading") return <div className="center muted">Loading…</div>;
   if (state === "anon") return <div className="center muted">Redirecting to sign in…</div>;
 
   async function logout() {
     await api("/auth/logout", { method: "POST" }).catch(() => undefined);
+    clearToken();
     router.replace("/login");
   }
 

@@ -1,5 +1,18 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
+// Session token store. The dashboard and API are on different domains, so cross-site cookies are
+// blocked by Safari/Brave; we keep the token in localStorage and send it as a Bearer header.
+const TOKEN_KEY = "sid";
+export function setToken(t: string): void {
+  if (typeof window !== "undefined") localStorage.setItem(TOKEN_KEY, t);
+}
+export function clearToken(): void {
+  if (typeof window !== "undefined") localStorage.removeItem(TOKEN_KEY);
+}
+function getToken(): string | null {
+  return typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -23,10 +36,15 @@ const FRIENDLY: Record<string, string> = {
 
 /** Fetch the tenant API with the session cookie; throws ApiError with a readable message. */
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken();
   const res = await fetch(`${API_URL}${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
     ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(init?.headers as Record<string, string> | undefined),
+    },
   });
   if (!res.ok) {
     let message = `Something went wrong (${res.status}).`;
