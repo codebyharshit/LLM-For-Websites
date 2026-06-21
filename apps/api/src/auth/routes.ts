@@ -30,9 +30,16 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     // The callback lives on this API (not the dashboard), so build the link from the request host.
     const devLink = `${req.protocol}://${req.host}/auth/callback?token=${encodeURIComponent(token)}`;
     logger.info({ email }, "magic link issued");
-    // Email delivery (Resend) lands later; until then, return the link in dev (http) only.
-    const isDev = !env.APP_BASE_URL.startsWith("https");
-    return reply.send(isDev ? { ok: true, devLink, devToken: token } : { ok: true });
+    // Email delivery (Resend) is not wired yet. Until RESEND_API_KEY is set, return the link so the
+    // dashboard can sign the user in (it follows res.devLink). SECURITY: this hands a working login
+    // link to anyone who submits a known account email — acceptable only for this single-owner demo.
+    // Once RESEND_API_KEY is configured, email the link instead and stop returning it here.
+    const emailConfigured = env.RESEND_API_KEY.trim().length > 0;
+    if (emailConfigured) {
+      // TODO(M4): deliver `devLink` via Resend instead of returning it.
+      return reply.send({ ok: true });
+    }
+    return reply.send({ ok: true, devLink, devToken: token });
   });
 
   app.get("/auth/callback", async (req, reply) => {
@@ -48,11 +55,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       { userId: user.id, tenantId: user.tenantId, exp: nowSeconds() + SESSION_TTL },
       env.SESSION_SECRET,
     );
+    // Dashboard and API are on different domains in production, so the session cookie must be
+    // SameSite=None (with Secure) to be sent on the dashboard's cross-site requests. In local http
+    // dev everything is same-site under localhost, so Lax is correct (None would require Secure).
+    const isHttps = env.APP_BASE_URL.startsWith("https");
     reply.setCookie(SESSION_COOKIE, session, {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: isHttps ? "none" : "lax",
       path: "/",
-      secure: env.APP_BASE_URL.startsWith("https"),
+      secure: isHttps,
       maxAge: SESSION_TTL,
     });
     // Clicking the link lands the user in the dashboard, logged in.
