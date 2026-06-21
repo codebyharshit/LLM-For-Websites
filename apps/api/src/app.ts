@@ -16,6 +16,7 @@ import { sourcesRoutes } from "./routes/sources.js";
 import { chatRoutes } from "./routes/chat.js";
 import { widgetRoutes } from "./routes/widget.js";
 import { botRoutes } from "./routes/bot.js";
+import { widgetAssetRoutes } from "./routes/widgetAsset.js";
 import { conversationsRoutes } from "./routes/conversations.js";
 import { rulesRoutes } from "./routes/rules.js";
 import { analyticsRoutes } from "./routes/analytics.js";
@@ -72,6 +73,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
     ...(opts.chatRateLimit ? { rateLimit: opts.chatRateLimit } : {}),
   });
   await widgetRoutes(app, { delivery: escalationDelivery });
+  await app.register(widgetAssetRoutes);
   app.get("/health", async () => ({ ok: true }));
 
   app.addHook("onClose", async () => {

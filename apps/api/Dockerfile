@@ -8,7 +8,7 @@ FROM base AS build
 COPY . .
 RUN pnpm install --frozen-lockfile
 # Builds @supportrag/api and its workspace deps (core, db, shared)
-RUN pnpm --filter @supportrag/api... build
+RUN pnpm --filter @supportrag/api... build && pnpm --filter @supportrag/widget build
 
 FROM base AS runtime
 ENV NODE_ENV=production
