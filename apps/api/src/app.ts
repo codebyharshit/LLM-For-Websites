@@ -30,7 +30,9 @@ export interface BuildAppOptions {
 
 /** Build the Fastify app (no listen) so tests can use app.inject(). */
 export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false });
+  // trustProxy: behind Railway/any TLS-terminating proxy, trust X-Forwarded-Proto/Host so
+  // req.protocol is "https" (correct magic-link scheme) and Secure cookies are honored.
+  const app = Fastify({ logger: false, trustProxy: true });
   const env = getEnv();
   const connection = makeRedisConnection(env.REDIS_URL);
   const queue = createIngestQueue(connection);
